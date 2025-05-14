@@ -27,6 +27,7 @@ Play again option when the game ends
 You can play the game above - just enter player names to begin! This is perfect for two people to play together by taking turns at the same device.
 
 2) **Space Duel**
+    
  **Game Features**
 
 Two-player competitive gameplay with distinct ships
