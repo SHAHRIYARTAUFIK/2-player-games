@@ -38,7 +38,8 @@ Sound effects for shooting, explosions, and hits
 Health and score tracking for both players
 Attractive space-themed visuals with stars and dynamic elements
 
- How to Play
+ How to Play:
+ 
 Player 1 (Red Ship)
 
 W: Move forward
