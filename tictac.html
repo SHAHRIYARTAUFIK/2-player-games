@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Apply Inter font and basic styling to the body */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+        /* Container for the entire game UI */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Rounded corners */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            max-width: 90vw; /* Responsive width */
+            max-height: 90vh; /* Responsive height */
+            box-sizing: border-box;
+            position: relative; /* Needed for message box overlay */
+        }
+        /* Styling for the Tic-Tac-Toe board grid */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 columns, equal width */
+            grid-template-rows: repeat(3, 1fr);    /* 3 rows, equal height */
+            gap: 0.5rem; /* Space between cells */
+            width: min(90vw, 400px); /* Max width 400px, responsive */
+            height: min(90vw, 400px); /* Keep aspect ratio square */
+            background-color: #cbd5e1; /* Light border color for grid lines */
+            border-radius: 0.75rem;
+            padding: 0.5rem; /* Padding to show grid lines */
+            box-sizing: border-box;
+        }
+        /* Styling for individual cells on the board */
+        .cell {
+            width: 100%;
+            height: 100%;
+            background-color: #e2e8f0; /* Cell background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem; /* Large font for X/O */
+            font-weight: 700;
+            color: #334155; /* Dark text color */
+            cursor: pointer;
+            border-radius: 0.5rem;
+            transition: background-color 0.15s ease-in-out;
+        }
+        /* Hover effect for empty cells */
+        .cell:not(.player-x):not(.player-o):hover {
+            background-color: #94a3b8; /* Tailwind slate-400 */
+        }
+        /* Styling for player X's mark */
+        .player-x {
+            color: #ef4444; /* Red for X */
+        }
+        /* Styling for player O's mark */
+        .player-o {
+            color: #3b82f6; /* Blue for O */
+        }
+
+        /* Styling for the status display (e.g., "Player X's Turn") */
+        .status-display {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #334155; /* Darker text for status */
+            text-align: center;
+        }
+        /* Indicator for the current player's symbol */
+        .player-symbol-indicator {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            line-height: 1.5rem; /* Center text vertically */
+            text-align: center;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+            border: 2px solid rgba(0,0,0,0.2);
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .symbol-x { background-color: #ef4444; color: white; }
+        .symbol-o { background-color: #3b82f6; color: white; }
+
+        /* Styling for game buttons (e.g., Reset Game) */
+        .game-button {
+            background-color: #4f46e5; /* Tailwind indigo-600 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            margin-top: 1.5rem;
+            border: none;
+        }
+        /* Hover effect for buttons */
+        .game-button:hover {
+            background-color: #4338ca; /* Tailwind indigo-700 */
+            transform: translateY(-2px);
+        }
+        /* Active (click) effect for buttons */
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Custom Message Box Overlay */
+        .message-box-overlay {
+            position: fixed; /* Use fixed to cover entire viewport */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Ensure it's on top of other content */
+            opacity: 0; /* Initially hidden */
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        /* Make message box visible */
+        .message-box-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        /* Styling for the message box content itself */
+        .message-box {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 90%;
+            transform: scale(0.9); /* Initial scale for animation */
+            transition: transform 0.3s ease-in-out;
+        }
+        /* Scale animation when visible */
+        .message-box-overlay.visible .message-box {
+            transform: scale(1);
+        }
+        /* Message box title styling */
+        .message-box h3 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        /* Message box content text styling */
+        .message-box p {
+            font-size: 1.125rem;
+            color: #475569;
+            margin-bottom: 1.5rem;
+        }
+        /* Message box OK button styling */
+        .message-box button {
+            background-color: #22c55e; /* Tailwind green-500 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+            border: none;
+        }
+        /* Hover effect for OK button */
+        .message-box button:hover {
+            background-color: #16a34a; /* Tailwind green-600 */
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="status" class="status-display">
+            Player X's Turn <span class="player-symbol-indicator symbol-x">X</span>
+        </div>
+        <div id="gameBoard" class="board">
+            </div>
+        <button id="resetButton" class="game-button">Reset Game</button>
+    </div>
+
+    <div id="messageBoxOverlay" class="message-box-overlay">
+        <div class="message-box">
+            <h3 id="messageBoxTitle"></h3>
+            <p id="messageBoxContent"></p>
+            <button id="messageBoxOkButton">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const gameBoard = document.getElementById('gameBoard');
+        const statusDisplay = document.getElementById('status');
+        const resetButton = document.getElementById('resetButton');
+        const messageBoxOverlay = document.getElementById('messageBoxOverlay');
+        const messageBoxTitle = document.getElementById('messageBoxTitle');
+        const messageBoxContent = document.getElementById('messageBoxContent');
+        const messageBoxOkButton = document.getElementById('messageBoxOkButton');
+
+        // Game state variables
+        let board = ['', '', '', '', '', '', '', '', '']; // Represents the 3x3 board (empty, 'X', or 'O')
+        let currentPlayer = 'X'; // Current player ('X' or 'O')
+        let gameOver = false;    // True if the game has ended
+        let cells = [];          // Array to hold references to the cell DOM elements
+
+        // Winning combinations (indices of the board array)
+        const winConditions = [
+            [0, 1, 2], // Rows
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6], // Columns
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8], // Diagonals
+            [2, 4, 6]
+        ];
+
+        // --- Game Logic Functions ---
+
+        /**
+         * Initializes the game board and resets game state.
+         * This function also creates the 9 cell elements dynamically.
+         */
+        function initializeGame() {
+            board = ['', '', '', '', '', '', '', '', '']; // Reset board to empty
+            currentPlayer = 'X'; // Start with Player X
+            gameOver = false;    // Game is not over
+            cells = [];          // Clear previous cell references
+            gameBoard.innerHTML = ''; // Clear existing cells from the DOM
+
+            // Create 9 cells and append them to the game board
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i; // Store the index of the cell
+                cell.addEventListener('click', handleCellClick); // Add click listener
+                cells.push(cell); // Store reference
+                gameBoard.appendChild(cell); // Add to DOM
+            }
+            updateStatus(); // Update the status display
+            hideMessageBox(); // Hide any message box
+        }
+
+        /**
+         * Updates the status display to show the current player's turn.
+         */
+        function updateStatus() {
+            statusDisplay.innerHTML = `Player ${currentPlayer}'s Turn <span class="player-symbol-indicator ${currentPlayer === 'X' ? 'symbol-x' : 'symbol-o'}">${currentPlayer}</span>`;
+        }
+
+        /**
+         * Displays a custom message box to the user.
+         * @param {string} title - The title of the message box.
+         * @param {string} content - The content of the message box.
+         */
+        function showMessageBox(title, content) {
+            messageBoxTitle.textContent = title;
+            messageBoxContent.textContent = content;
+            messageBoxOverlay.classList.add('visible');
+        }
+
+        /**
+         * Hides the custom message box.
+         */
+        function hideMessageBox() {
+            messageBoxOverlay.classList.remove('visible');
+        }
+
+        /**
+         * Checks if the current player has won the game.
+         * @returns {boolean} - True if the current player has won, false otherwise.
+         */
+        function checkWin() {
+            for (let i = 0; i < winConditions.length; i++) {
+                const [a, b, c] = winConditions[i]; // Get indices of a winning line
+                // Check if all three cells in the line are marked by the current player
+                if (board[a] === currentPlayer && board[b] === currentPlayer && board[c] === currentPlayer) {
+                    return true; // Current player has won
+                }
+            }
+            return false; // No win found
+        }
+
+        /**
+         * Checks if the game is a draw (all cells filled and no winner).
+         * @returns {boolean} - True if the game is a draw, false otherwise.
+         */
+        function checkDraw() {
+            // If every cell is filled and there's no winner, it's a draw
+            return !board.includes('') && !checkWin();
+        }
+
+        /**
+         * Handles a click event on a game cell.
+         * @param {MouseEvent} event - The click event.
+         */
+        function handleCellClick(event) {
+            if (gameOver) {
+                showMessageBox("Game Over!", "The game has ended. Please reset to play again.");
+                return;
+            }
+
+            const clickedCell = event.target;
+            const clickedCellIndex = parseInt(clickedCell.dataset.index);
+
+            // If the clicked cell is already marked or the game is over, do nothing
+            if (board[clickedCellIndex] !== '') {
+                showMessageBox("Invalid Move", "That spot is already taken. Please choose an empty spot.");
+                return;
+            }
+
+            // Mark the cell with the current player's symbol
+            board[clickedCellIndex] = currentPlayer;
+            clickedCell.textContent = currentPlayer; // Update cell's text content
+            clickedCell.classList.add(currentPlayer === 'X' ? 'player-x' : 'player-o'); // Add player-specific class
+
+            // Check for win
+            if (checkWin()) {
+                gameOver = true;
+                showMessageBox("Game Over!", `Player ${currentPlayer} Wins!`);
+                statusDisplay.innerHTML = `Player ${currentPlayer} Wins! <span class="player-symbol-indicator ${currentPlayer === 'X' ? 'symbol-x' : 'symbol-o'}">${currentPlayer}</span>`;
+            }
+            // Check for draw
+            else if (checkDraw()) {
+                gameOver = true;
+                showMessageBox("Game Over!", "It's a Draw!");
+                statusDisplay.textContent = "It's a Draw!";
+            }
+            // If no win or draw, switch players
+            else {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                updateStatus();
+            }
+        }
+
+        /**
+         * Resets the game to its initial state.
+         */
+        function resetGame() {
+            initializeGame(); // Re-initialize game state and board
+        }
+
+        // --- Event Listeners ---
+        resetButton.addEventListener('click', resetGame);
+        messageBoxOkButton.addEventListener('click', hideMessageBox);
+
+        // --- Initial Setup ---
+        // Initialize the game when the window loads
+        window.onload = initializeGame;
+    </script>
+</body>
+</html>
