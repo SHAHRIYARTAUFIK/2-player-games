@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hex Connect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Apply Inter font and basic styling to the body */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+        /* Container for the entire game UI */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Rounded corners */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            max-width: 90vw; /* Responsive width */
+            max-height: 90vh; /* Responsive height */
+            box-sizing: border-box;
+            position: relative; /* Needed for message box overlay */
+        }
+        /* Styling for the game canvas */
+        canvas {
+            border: 2px solid #cbd5e1; /* Light border */
+            background-color: #e2e8f0; /* Slightly darker background for board */
+            border-radius: 0.75rem;
+            touch-action: manipulation; /* Improve touch responsiveness */
+            display: block; /* Remove extra space below canvas */
+            max-width: 100%; /* Ensure canvas scales down */
+            height: auto; /* Maintain aspect ratio */
+        }
+        /* Styling for the status display (e.g., "Player 1's Turn") */
+        .status-display {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #334155; /* Darker text for status */
+            text-align: center;
+        }
+        /* Indicator for the current player's color */
+        .player-color-indicator {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+        /* Specific colors for Player 1 (Red) and Player 2 (Blue) */
+        .player-red { background-color: #ef4444; } /* Tailwind red-500 */
+        .player-blue { background-color: #3b82f6; } /* Tailwind blue-500 */
+
+        /* Styling for game buttons (e.g., Reset Game) */
+        .game-button {
+            background-color: #4f46e5; /* Tailwind indigo-600 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            margin-top: 1.5rem;
+            border: none;
+        }
+        /* Hover effect for buttons */
+        .game-button:hover {
+            background-color: #4338ca; /* Tailwind indigo-700 */
+            transform: translateY(-2px);
+        }
+        /* Active (click) effect for buttons */
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Custom Message Box Overlay */
+        .message-box-overlay {
+            position: fixed; /* Use fixed to cover entire viewport */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Ensure it's on top of other content */
+            opacity: 0; /* Initially hidden */
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        /* Make message box visible */
+        .message-box-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        /* Styling for the message box content itself */
+        .message-box {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 90%;
+            transform: scale(0.9); /* Initial scale for animation */
+            transition: transform 0.3s ease-in-out;
+        }
+        /* Scale animation when visible */
+        .message-box-overlay.visible .message-box {
+            transform: scale(1);
+        }
+        /* Message box title styling */
+        .message-box h3 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        /* Message box content text styling */
+        .message-box p {
+            font-size: 1.125rem;
+            color: #475569;
+            margin-bottom: 1.5rem;
+        }
+        /* Message box OK button styling */
+        .message-box button {
+            background-color: #22c55e; /* Tailwind green-500 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+            border: none;
+        }
+        /* Hover effect for OK button */
+        .message-box button:hover {
+            background-color: #16a34a; /* Tailwind green-600 */
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="status" class="status-display">
+            Player 1's Turn <span class="player-color-indicator player-red"></span>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <button id="resetButton" class="game-button">Reset Game</button>
+    </div>
+
+    <div id="messageBoxOverlay" class="message-box-overlay">
+        <div class="message-box">
+            <h3 id="messageBoxTitle"></h3>
+            <p id="messageBoxContent"></p>
+            <button id="messageBoxOkButton">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusDisplay = document.getElementById('status');
+        const resetButton = document.getElementById('resetButton');
+        const messageBoxOverlay = document.getElementById('messageBoxOverlay');
+        const messageBoxTitle = document.getElementById('messageBoxTitle');
+        const messageBoxContent = document.getElementById('messageBoxContent');
+        const messageBoxOkButton = document.getElementById('messageBoxOkButton');
+
+        // Game board dimensions (number of hexes)
+        const boardRows = 11; // Number of hex rows
+        const boardCols = 11; // Number of hex columns (approximate, due to hex offset)
+
+        // Hexagon dimensions, calculated dynamically based on canvas size
+        let hexRadius;   // Radius of each hexagon (distance from center to vertex)
+        let hexHeight;   // Height of each hexagon (2 * hexRadius)
+        let hexWidth;    // Width of each hexagon (sqrt(3) * hexRadius)
+        let startX, startY; // Starting drawing coordinates for the board (top-left of the first hex)
+
+        // Game state variables
+        let board = [];             // 2D array representing the game board (0: empty, 1: Player 1, 2: Player 2)
+        let currentPlayer = 1;      // Current player (1 for Red, 2 for Blue)
+        let gameOver = false;       // True if the game has ended
+        let hoveredHex = null;      // Stores the coordinates of the currently hovered hex for visual feedback
+
+        // Colors for players and empty cells
+        const playerColors = {
+            1: '#ef4444', // Red (Tailwind red-500)
+            2: '#3b82f6', // Blue (Tailwind blue-500)
+            0: '#cbd5e1'  // Empty (Tailwind slate-300)
+        };
+        const hoverColor = '#94a3b8'; // Tailwind slate-400 for hover effect
+
+        // --- Utility Functions for Hex Grid Drawing and Conversion ---
+
+        /**
+         * Calculates the canvas coordinates of a hexagon's center.
+         * This assumes a pointy-top hex grid with odd-rows shifted right (odd-r offset).
+         * @param {number} col - Column index of the hex.
+         * @param {number} row - Row index of the hex.
+         * @returns {{x: number, y: number}} - Canvas coordinates of the hex center.
+         */
+        function getHexCenter(col, row) {
+            // X coordinate: starts at startX, adds hexWidth for each column, plus hexRadius offset for odd rows
+            const x = startX + col * hexWidth + (row % 2) * hexRadius;
+            // Y coordinate: starts at startY, adds 0.75 * hexHeight for each row (due to overlap)
+            const y = startY + row * (hexHeight * 0.75) + hexRadius; // Add hexRadius to center vertically
+            return { x, y };
+        }
+
+        /**
+         * Draws a single hexagon on the canvas.
+         * @param {number} x - X coordinate of the hex center.
+         * @param {number} y - Y coordinate of the hex center.
+         * @param {string} color - Fill color of the hex.
+         * @param {string} [strokeColor='#94a3b8'] - Stroke color of the hex.
+         */
+        function drawHex(x, y, color, strokeColor = '#94a3b8') {
+            ctx.beginPath();
+            // Draw the 6 vertices of the hexagon
+            for (let i = 0; i < 6; i++) {
+                const angle = Math.PI / 3 * i; // Angle in radians for each vertex (60 degrees apart)
+                ctx.lineTo(x + hexRadius * Math.cos(angle), y + hexRadius * Math.sin(angle));
+            }
+            ctx.closePath(); // Close the path to form the hexagon
+            ctx.fillStyle = color;
+            ctx.fill(); // Fill the hexagon with the specified color
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 1;
+            ctx.stroke(); // Draw the border of the hexagon
+        }
+
+        /**
+         * Converts canvas (mouse) coordinates to hex grid (column, row) coordinates.
+         * This uses a simplified approach by calculating approximate row/col and then checking distance.
+         * @param {number} mouseX - Mouse X coordinate on the canvas.
+         * @param {number} mouseY - Mouse Y coordinate on the canvas.
+         * @returns {{col: number, row: number} | null} - Hex grid coordinates or null if outside any hex.
+         */
+        function getHexAtMouse(mouseX, mouseY) {
+            // Adjust mouse coordinates relative to the board's drawing origin
+            const adjustedX = mouseX - startX;
+            const adjustedY = mouseY - startY;
+
+            // Approximate row calculation based on vertical position
+            let row = Math.round(adjustedY / (hexHeight * 0.75));
+
+            // Check if the approximated row is within board bounds
+            if (row < 0 || row >= boardRows) return null;
+
+            // Approximate column calculation, accounting for the row offset
+            let col = Math.round((adjustedX - (row % 2) * hexRadius) / hexWidth);
+
+            // Check if the approximated column is within board bounds
+            if (col < 0 || col >= boardCols) return null;
+
+            // More precise check: calculate the center of the potential hex and check distance
+            const { x: hexCenterX, y: hexCenterY } = getHexCenter(col, row);
+            const dx = mouseX - hexCenterX;
+            const dy = mouseY - hexCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // If the click is within the hexRadius, consider it a hit
+            if (distance <= hexRadius) {
+                return { col, row };
+            }
+            return null; // Click was in the gap or outside the hex
+        }
+
+        // --- Game Logic Functions ---
+
+        /**
+         * Initializes the game board with empty cells and resets game state.
+         */
+        function initializeBoard() {
+            board = Array(boardRows).fill(0).map(() => Array(boardCols).fill(0));
+            currentPlayer = 1;
+            gameOver = false;
+            hoveredHex = null; // Clear hovered hex on reset
+            updateStatus();
+            drawBoard(); // Redraw the empty board
+        }
+
+        /**
+         * Draws the entire game board, including player pieces and hover effect.
+         */
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the entire canvas
+
+            for (let row = 0; row < boardRows; row++) {
+                for (let col = 0; col < boardCols; col++) {
+                    const { x, y } = getHexCenter(col, row);
+                    const player = board[row][col];
+                    let colorToDraw = playerColors[player];
+
+                    // Apply hover effect if this hex is currently hovered and empty
+                    if (!gameOver && hoveredHex && hoveredHex.col === col && hoveredHex.row === row && player === 0) {
+                        colorToDraw = hoverColor;
+                    }
+                    drawHex(x, y, colorToDraw);
+                }
+            }
+        }
+
+        /**
+         * Updates the status display to show the current player's turn.
+         */
+        function updateStatus() {
+            statusDisplay.innerHTML = `Player ${currentPlayer}'s Turn <span class="player-color-indicator ${currentPlayer === 1 ? 'player-red' : 'player-blue'}"></span>`;
+        }
+
+        /**
+         * Displays a custom message box to the user.
+         * @param {string} title - The title of the message box.
+         * @param {string} content - The content of the message box.
+         */
+        function showMessageBox(title, content) {
+            messageBoxTitle.textContent = title;
+            messageBoxContent.textContent = content;
+            messageBoxOverlay.classList.add('visible');
+        }
+
+        /**
+         * Hides the custom message box.
+         */
+        function hideMessageBox() {
+            messageBoxOverlay.classList.remove('visible');
+        }
+
+        /**
+         * Checks if a player has won the game using Breadth-First Search (BFS).
+         * Player 1 (Red) connects top to bottom.
+         * Player 2 (Blue) connects left to right.
+         * @param {number} player - The player to check for win (1 or 2).
+         * @returns {boolean} - True if the player has won, false otherwise.
+         */
+        function checkWin(player) {
+            const visited = Array(boardRows).fill(false).map(() => Array(boardCols).fill(false));
+            const queue = [];
+
+            // Define neighbor offsets for pointy-top hexes based on row parity
+            // (dr, dc) = (delta row, delta column)
+            const hexDirectionsEvenRow = [
+                [-1, 0], [-1, 1], // Top-Left, Top-Right
+                [0, -1], [0, 1],    // Left, Right
+                [1, 0], [1, 1]      // Bottom-Left, Bottom-Right
+            ];
+            const hexDirectionsOddRow = [
+                [-1, -1], [-1, 0],  // Top-Left, Top-Right
+                [0, -1], [0, 1],    // Left, Right
+                [1, -1], [1, 0]     // Bottom-Left, Bottom-Right
+            ];
+
+            // Initialize the queue with starting edge cells for the current player
+            if (player === 1) { // Red player: Connects top (row 0) to bottom (last row)
+                for (let c = 0; c < boardCols; c++) {
+                    if (board[0][c] === player) {
+                        queue.push({ r: 0, c: c });
+                        visited[0][c] = true;
+                    }
+                }
+            } else { // Blue player: Connects left (col 0) to right (last col)
+                for (let r = 0; r < boardRows; r++) {
+                    if (board[r][0] === player) {
+                        queue.push({ r: r, c: 0 });
+                        visited[r][0] = true;
+                    }
+                }
+            }
+
+            let head = 0; // Pointer for the front of the queue (simulating dequeue)
+            while (head < queue.length) {
+                const { r, c } = queue[head++]; // Get current hex from queue
+
+                // Check for win condition: if the current hex is on the target edge
+                if (player === 1 && r === boardRows - 1) { // Red reaches bottom row
+                    return true;
+                }
+                if (player === 2 && c === boardCols - 1) { // Blue reaches rightmost column
+                    return true;
+                }
+
+                // Determine correct neighbor offsets based on the current row's parity
+                const currentNeighbors = (r % 2 === 0) ? hexDirectionsEvenRow : hexDirectionsOddRow;
+
+                // Explore all 6 neighbors
+                for (const [dr, dc] of currentNeighbors) {
+                    const nr = r + dr; // Neighbor row
+                    const nc = c + dc; // Neighbor column
+
+                    // Check if neighbor is within board bounds, belongs to the current player, and hasn't been visited
+                    if (nr >= 0 && nr < boardRows && nc >= 0 && nc < boardCols &&
+                        board[nr][nc] === player && !visited[nr][nc]) {
+                        visited[nr][nc] = true; // Mark as visited
+                        queue.push({ r: nr, c: nc }); // Add to queue for further exploration
+                    }
+                }
+            }
+            return false; // No path found
+        }
+
+        /**
+         * Handles a click event on the canvas.
+         * @param {MouseEvent} event - The click event.
+         */
+        function handleClick(event) {
+            if (gameOver) {
+                showMessageBox("Game Over!", "The game has ended. Please reset to play again.");
+                return;
+            }
+
+            // Get mouse coordinates relative to the canvas
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            // Convert mouse coordinates to hex grid coordinates
+            const hexCoords = getHexAtMouse(mouseX, mouseY);
+
+            if (hexCoords) {
+                const { col, row } = hexCoords;
+                if (board[row][col] === 0) { // If the clicked cell is empty
+                    board[row][col] = currentPlayer; // Place the current player's piece
+                    drawBoard(); // Redraw the board to show the new piece
+
+                    if (checkWin(currentPlayer)) {
+                        gameOver = true;
+                        showMessageBox("Game Over!", `Player ${currentPlayer} Wins!`);
+                        statusDisplay.innerHTML = `Player ${currentPlayer} Wins! <span class="player-color-indicator ${currentPlayer === 1 ? 'player-red' : 'player-blue'}"></span>`;
+                    } else {
+                        currentPlayer = currentPlayer === 1 ? 2 : 1; // Switch to the next player
+                        updateStatus(); // Update the status display
+                    }
+                } else {
+                    // Inform the user if the spot is already taken
+                    showMessageBox("Invalid Move", "That spot is already taken. Please choose an empty spot.");
+                }
+            }
+        }
+
+        /**
+         * Handles mouse movement on the canvas to show a hover effect.
+         * @param {MouseEvent} event - The mousemove event.
+         */
+        function handleMouseMove(event) {
+            if (gameOver) {
+                // If game is over, no need for hover effect
+                if (hoveredHex) {
+                    hoveredHex = null;
+                    drawBoard(); // Redraw to clear any lingering hover
+                }
+                return;
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            const newHoveredHex = getHexAtMouse(mouseX, mouseY);
+
+            // Only redraw if the hovered hex has changed or is no longer hovered
+            if (
+                !newHoveredHex && hoveredHex ||
+                newHoveredHex && !hoveredHex ||
+                (newHoveredHex && hoveredHex && (newHoveredHex.col !== hoveredHex.col || newHoveredHex.row !== hoveredHex.row))
+            ) {
+                hoveredHex = newHoveredHex;
+                drawBoard(); // Redraw the board to update hover state
+            }
+        }
+
+        /**
+         * Resets the game to its initial state.
+         */
+        function resetGame() {
+            initializeBoard(); // Re-initialize board and game state
+            hideMessageBox(); // Hide any open message box
+        }
+
+        /**
+         * Resizes the canvas and recalculates hex dimensions to make the game responsive.
+         * This function ensures the board fits within the available space and remains centered.
+         */
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+
+            // Determine max canvas dimensions based on container, with some padding
+            const maxCanvasWidth = Math.min(containerWidth * 0.9, 800); // Max 800px or 90% of container width
+            const maxCanvasHeight = Math.min(containerHeight * 0.7, 600); // Max 600px or 70% of container height
+
+            // Calculate hexRadius to fit the entire board within the max canvas dimensions
+            // Formula for total board width: (boardCols * hexWidth) + hexRadius (for offset)
+            // Formula for total board height: (boardRows * hexHeight * 0.75) + hexHeight * 0.25 (for last row)
+
+            // Calculate a potential hexRadius based on fitting the width
+            const potentialHexRadiusFromWidth = maxCanvasWidth / (boardCols * Math.sqrt(3) + 1); // hexWidth = sqrt(3)*hexRadius
+            // Calculate a potential hexRadius based on fitting the height
+            const potentialHexRadiusFromHeight = maxCanvasHeight / (boardRows * 1.5 + 0.5); // hexHeight * 0.75 = 1.5*hexRadius
+
+            // Choose the smaller radius to ensure the board fits both dimensions
+            hexRadius = Math.floor(Math.min(potentialHexRadiusFromWidth, potentialHexRadiusFromHeight));
+
+            // Ensure a minimum size for playability on very small screens
+            if (hexRadius < 10) hexRadius = 10;
+
+            // Recalculate hex dimensions based on the chosen hexRadius
+            hexHeight = hexRadius * 2;
+            hexWidth = Math.sqrt(3) * hexRadius;
+
+            // Set canvas dimensions to perfectly fit the calculated hex grid
+            canvas.width = Math.ceil(boardCols * hexWidth + hexRadius); // Add hexRadius for the offset of the last hex in odd rows
+            canvas.height = Math.ceil(boardRows * hexHeight * 0.75 + hexHeight * 0.25); // Add 0.25 hexHeight for the last row's full extent
+
+            // Set startX and startY to 0 as the canvas itself is now sized to fit the board,
+            // and the CSS centers the canvas within its parent.
+            startX = 0;
+            startY = 0;
+
+            // Removed drawBoard() from here. It will be called by initializeBoard() after hex dimensions are set.
+        }
+
+        // --- Event Listeners ---
+        canvas.addEventListener('click', handleClick);
+        canvas.addEventListener('mousemove', handleMouseMove); // Add mousemove for hover effect
+        canvas.addEventListener('mouseout', () => { // Clear hover when mouse leaves canvas
+            if (hoveredHex) {
+                hoveredHex = null;
+                drawBoard();
+            }
+        });
+        resetButton.addEventListener('click', resetGame);
+        messageBoxOkButton.addEventListener('click', hideMessageBox);
+
+        // --- Initial Setup ---
+        // Ensure the canvas is resized and the game board is initialized when the window loads
+        window.onload = function () {
+            // First, resize the canvas and calculate hex dimensions.
+            // This must happen BEFORE initializeBoard() calls drawBoard().
+            resizeCanvas();
+            // Then, initialize the board, which will now correctly call drawBoard() with defined hex dimensions.
+            initializeBoard();
+        };
+        // Recalculate canvas size and redraw board when the window is resized
+        window.onresize = function() {
+            resizeCanvas(); // Recalculate dimensions
+            drawBoard();    // Redraw the board with new dimensions
+        };
+    </script>
+</body>
+</html>
