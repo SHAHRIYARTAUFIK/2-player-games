@@ -68,3 +68,17 @@ Here's how it works:
 Player 1 (Red) tries to connect the top edge to the bottom edge of the board.
 Player 2 (Blue) tries to connect the left edge to the right edge of the board.
 The game is built using HTML, CSS (Tailwind CSS for styling), and JavaScript, making it fully playable in your browser.
+
+4) **TIC-TAC-TOE**
+How to Play Tic-Tac-Toe:
+Objective: Be the first player to get three of your marks (X or O) in a row, either horizontally, vertically, or diagonally.
+Players:
+Player X: Starts first.
+Player O: Goes second.
+Turns: Players take turns clicking on an empty square on the 3x3 grid.
+Marking: When you click an empty square, your symbol (X or O) will appear in that square.
+Winning: If you successfully place three of your marks in a line, you win the game!
+Draw: If all 9 squares are filled and neither player has achieved three in a row, the game is a draw.
+Game Over: Once a player wins or the game is a draw, a message box will appear. You won't be able to make any more moves until you reset the game.
+Reset: Click the "Reset Game" button to clear the board and start a new game.
+Enjoy playing!
