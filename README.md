@@ -62,4 +62,9 @@ Shoot the opponent to reduce their health
 Destroy asteroids for additional points
 Avoid collisions with asteroids
 Be the last ship standing to win
+3) **Hex connect**
+Here's how it works:
 
+Player 1 (Red) tries to connect the top edge to the bottom edge of the board.
+Player 2 (Blue) tries to connect the left edge to the right edge of the board.
+The game is built using HTML, CSS (Tailwind CSS for styling), and JavaScript, making it fully playable in your browser.
